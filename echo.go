@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -41,8 +42,11 @@ func main() {
 		}
 	}
 
-	cronCount := 0
-	echoCount := 0
+	// Just so we can better control when we use the stream
+	logString := ""
+
+	cronCount := int64(0)
+	echoCount := int64(0)
 
 	hostname := os.Getenv("HOSTNAME")
 	msg := os.Getenv("MSG")
@@ -57,7 +61,7 @@ func main() {
 	envs := os.Environ()
 	sort.StringSlice(envs).Sort()
 	env := strings.Join(envs, "\n")
-	fmt.Printf("Envs:\n%s\n", env)
+	logString += fmt.Sprintf("Envs:\n%s\n", env)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var body []byte
@@ -66,30 +70,64 @@ func main() {
 			body, _ = ioutil.ReadAll(r.Body)
 		}
 
-		fmt.Printf("%s:\n%s %s\nHeaders:\n%s\n\nBody:\n%s\n\n",
+		logString += fmt.Sprintf("%s:\n%s %s\nHeaders:\n%s\n\nBody:\n%s\n\n",
 			time.Now().String(), r.Method, r.URL, r.Header, string(body))
 
 		if r.URL.Path == "/stats" {
 			fmt.Fprintf(w, "%d/%d\n", echoCount, cronCount)
 		} else {
+			sleep := r.URL.Query().Get("sleep")
+			if sleep == "" {
+				sleep = os.Getenv("SLEEP")
+			}
+
+			if sleep != "" {
+				len, _ := strconv.Atoi(sleep)
+				logString += fmt.Sprintf("Sleeping %d\n", len)
+				fmt.Printf(logString)
+				logString = ""
+				time.Sleep(time.Duration(len) * time.Second)
+			}
+			if r.URL.Query().Get("crash") != "" {
+				fmt.Printf(logString)
+				fmt.Printf("Crashing...\n")
+				os.Exit(1)
+			}
+			if t := r.URL.Query().Get("fail"); t != "" {
+				s, _ := strconv.Atoi(t)
+				logString += fmt.Sprintf("Failing with: %d\n", s)
+				w.WriteHeader(s)
+			}
+
 			if len(body) == 0 {
-				if t := r.URL.Query().Get("sleep"); t != "" {
-					len, _ := strconv.Atoi(t)
-					time.Sleep(time.Duration(len) * time.Second)
-				}
 				fmt.Fprintf(w, "%s (host: %s%s)\n", msg, hostname, rev)
 			} else {
 				fmt.Fprintf(w, string(body)+"\n")
 			}
 
 			if strings.Contains(string(body), "cron") {
-				cronCount++
+				atomic.AddInt64(&cronCount, 1)
 			} else {
-				echoCount++
+				atomic.AddInt64(&echoCount, 1)
 			}
 
 		}
+
+		// background it
+		go func(msg string) {
+			fmt.Printf(msg)
+		}(logString)
 	})
+
+	// HTTP_DELAY will pause for 'delay' seconds before starting the
+	// HTTP server. This is useful for simulating a log readiness probe
+	if delay := os.Getenv("HTTP_DELAY"); delay != "" {
+		sec, _ := strconv.Atoi(delay)
+		if sec != 0 {
+			logString += fmt.Sprintf("Sleeping %d seconds\n", sec)
+			time.Sleep(time.Duration(sec) * time.Second)
+		}
+	}
 
 	fmt.Print("Listening on port 8080\n")
 	http.ListenAndServe(":8080", nil)
