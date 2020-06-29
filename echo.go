@@ -43,8 +43,6 @@ func main() {
 	}
 
 	// Just so we can better control when we use the stream
-	logString := ""
-
 	cronCount := int64(0)
 	echoCount := int64(0)
 
@@ -61,7 +59,7 @@ func main() {
 	envs := os.Environ()
 	sort.StringSlice(envs).Sort()
 	env := strings.Join(envs, "\n")
-	logString += fmt.Sprintf("Envs:\n%s\n", env)
+	fmt.Printf("Envs:\n%s\n", env)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var body []byte
@@ -70,7 +68,7 @@ func main() {
 			body, _ = ioutil.ReadAll(r.Body)
 		}
 
-		logString += fmt.Sprintf("%s:\n%s %s\nHeaders:\n%s\n\nBody:\n%s\n\n",
+		logString := fmt.Sprintf("%s:\n%s %s\nHeaders:\n%s\n\nBody:\n%s\n\n",
 			time.Now().String(), r.Method, r.URL, r.Header, string(body))
 
 		if r.URL.Path == "/stats" {
@@ -124,7 +122,7 @@ func main() {
 	if delay := os.Getenv("HTTP_DELAY"); delay != "" {
 		sec, _ := strconv.Atoi(delay)
 		if sec != 0 {
-			logString += fmt.Sprintf("Sleeping %d seconds\n", sec)
+			fmt.Printf("Sleeping %d seconds for starting server...\n", sec)
 			time.Sleep(time.Duration(sec) * time.Second)
 		}
 	}
