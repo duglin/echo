@@ -74,6 +74,20 @@ func main() {
 		if r.URL.Path == "/stats" {
 			fmt.Fprintf(w, "%d/%d\n", echoCount, cronCount)
 		} else {
+			// ?curl=host
+			curlAddr := r.URL.Query().Get("curl")
+			if curlAddr != "" {
+				output, err := curl(curlAddr)
+				output = strings.TrimSpace(output)
+				if err != nil {
+					w.WriteHeader(500)
+					fmt.Fprintf(w, "Error curling(%s): %s - %s\n", curlAddr,
+						err, output)
+					return
+				}
+				fmt.Fprintf(w, "Curl: %s\n", output)
+			}
+
 			sleep := r.URL.Query().Get("sleep")
 			if sleep == "" {
 				sleep = os.Getenv("SLEEP")
@@ -115,6 +129,8 @@ func main() {
 		go func(msg string) {
 			fmt.Printf(msg)
 		}(logString)
+
+		fmt.Printf("Normal exit(200)\n")
 	})
 
 	// HTTP_DELAY will pause for 'delay' seconds before starting the
@@ -127,6 +143,11 @@ func main() {
 		}
 	}
 
-	fmt.Print("Listening on port 8080\n")
-	http.ListenAndServe(":8080", nil)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	fmt.Printf("Listening on port %s\n", port)
+	http.ListenAndServe(":"+port, nil)
 }
