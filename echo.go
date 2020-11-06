@@ -134,7 +134,7 @@ func main() {
 	})
 
 	// HTTP_DELAY will pause for 'delay' seconds before starting the
-	// HTTP server. This is useful for simulating a log readiness probe
+	// HTTP server. This is useful for simulating a long readiness probe
 	if delay := os.Getenv("HTTP_DELAY"); delay != "" {
 		sec, _ := strconv.Atoi(delay)
 		if sec != 0 {
