@@ -138,7 +138,7 @@ func main() {
 	if delay := os.Getenv("HTTP_DELAY"); delay != "" {
 		sec, _ := strconv.Atoi(delay)
 		if sec != 0 {
-			fmt.Printf("Sleeping %d seconds for starting server...\n", sec)
+			fmt.Printf("Sleeping %d seconds before starting server...\n", sec)
 			time.Sleep(time.Duration(sec) * time.Second)
 		}
 	}
