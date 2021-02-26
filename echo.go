@@ -68,8 +68,16 @@ func main() {
 			body, _ = ioutil.ReadAll(r.Body)
 		}
 
-		logString := fmt.Sprintf("%s:\n%s %s\nHeaders:\n%s\n\nBody:\n%s\n\n",
-			time.Now().String(), r.Method, r.URL, r.Header, string(body))
+		fmt.Printf("%s:\n%s %s\n", time.Now().String(), r.Method, r.URL)
+		headers := []string{}
+		for k, _ := range r.Header {
+			headers = append(headers, k)
+		}
+		sort.StringSlice(headers).Sort()
+		for _, k := range headers {
+			fmt.Printf("%s: %v\n", k, r.Header[k])
+		}
+		fmt.Printf("Body:\n%s\n\n", string(body))
 
 		if r.URL.Path == "/stats" {
 			fmt.Fprintf(w, "%d/%d\n", echoCount, cronCount)
@@ -95,19 +103,16 @@ func main() {
 
 			if sleep != "" {
 				len, _ := strconv.Atoi(sleep)
-				logString += fmt.Sprintf("Sleeping %d\n", len)
-				fmt.Printf(logString)
-				logString = ""
+				fmt.Printf("Sleeping %d\n", len)
 				time.Sleep(time.Duration(len) * time.Second)
 			}
 			if r.URL.Query().Get("crash") != "" {
-				fmt.Printf(logString)
 				fmt.Printf("Crashing...\n")
 				os.Exit(1)
 			}
 			if t := r.URL.Query().Get("fail"); t != "" {
 				s, _ := strconv.Atoi(t)
-				logString += fmt.Sprintf("Failing with: %d\n", s)
+				fmt.Printf("Failing with: %d\n", s)
 				w.WriteHeader(s)
 			}
 
@@ -124,11 +129,6 @@ func main() {
 			}
 
 		}
-
-		// background it
-		go func(msg string) {
-			fmt.Printf(msg)
-		}(logString)
 
 		fmt.Printf("Normal exit(200)\n")
 	})
