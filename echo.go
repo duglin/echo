@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+var exitCode = 200
+
 func curl(url string) (string, error) {
 	cmd := exec.Command("curl", "--http0.9", "-s", url)
 	res, err := cmd.CombinedOutput()
@@ -31,6 +33,7 @@ func main() {
 					now = parts[2] // Just time part
 					now = now[:len(date)]
 					if now > date {
+						fmt.Printf("Timed crashing on demand\n")
 						os.Exit(1)
 					}
 				}
@@ -38,6 +41,7 @@ func main() {
 				fmt.Printf("Curl: %s\n%s\n", now, err)
 			}
 		} else {
+			fmt.Printf("Crashing on demand\n")
 			os.Exit(1)
 		}
 	}
@@ -110,11 +114,15 @@ func main() {
 				fmt.Printf("Crashing...\n")
 				os.Exit(1)
 			}
-			if t := r.URL.Query().Get("fail"); t != "" {
-				s, _ := strconv.Atoi(t)
-				fmt.Printf("Failing with: %d\n", s)
-				w.WriteHeader(s)
+
+			ec := exitCode
+			if t := r.URL.Query().Get("exit"); t != "" {
+				if s, err := strconv.Atoi(t); err == nil {
+					ec = s
+				}
 			}
+			w.WriteHeader(ec)
+			fmt.Printf("Exit(%d)\n", ec)
 
 			if len(body) == 0 {
 				fmt.Fprintf(w, "%s (host: %s%s)\n", msg, hostname, rev)
@@ -129,8 +137,6 @@ func main() {
 			}
 
 		}
-
-		fmt.Printf("Normal exit(200)\n")
 	})
 
 	// HTTP_DELAY will pause for 'delay' seconds before starting the
@@ -140,6 +146,12 @@ func main() {
 		if sec != 0 {
 			fmt.Printf("Sleeping %d seconds before starting server...\n", sec)
 			time.Sleep(time.Duration(sec) * time.Second)
+		}
+	}
+
+	if exit := os.Getenv("EXIT"); exit != "" {
+		if s, err := strconv.Atoi(exit); err == nil {
+			exitCode = s
 		}
 	}
 
