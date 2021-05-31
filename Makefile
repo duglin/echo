@@ -3,7 +3,7 @@ all: echo .echo
 echo: echo.go
 	go build -o echo echo.go
 
-.echo: echo.go
+.echo: echo.go Dockerfile
 	go build -o /dev/null echo.go # quick fail
 	docker build -t duglin/echo .
 	docker push duglin/echo
