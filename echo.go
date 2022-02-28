@@ -110,9 +110,21 @@ func main() {
 				fmt.Printf("Sleeping %d\n", len)
 				time.Sleep(time.Duration(len) * time.Second)
 			}
+
 			if r.URL.Query().Get("crash") != "" {
 				fmt.Printf("Crashing...\n")
 				os.Exit(1)
+			}
+
+			if _, ok := r.URL.Query()["headers"]; ok {
+				fmt.Fprintf(w, "\nHeaders:\n")
+				for _, k := range headers {
+					fmt.Fprintf(w, "%s: %v\n", k, r.Header[k])
+				}
+			}
+
+			if _, ok := r.URL.Query()["envs"]; ok {
+				fmt.Fprintf(w, "\nEnvs:\n%s\n", env)
 			}
 
 			ec := exitCode
