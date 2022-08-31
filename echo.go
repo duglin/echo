@@ -86,6 +86,15 @@ func main() {
 		if r.URL.Path == "/stats" {
 			fmt.Fprintf(w, "%d/%d\n", echoCount, cronCount)
 		} else {
+			ec := exitCode
+			if t := r.URL.Query().Get("exit"); t != "" {
+				if s, err := strconv.Atoi(t); err == nil {
+					ec = s
+				}
+			}
+
+			w.WriteHeader(ec)
+			fmt.Printf("Exit(%d)\n", ec)
 			// ?curl=host
 			curlAddr := r.URL.Query().Get("curl")
 			if curlAddr != "" {
@@ -111,13 +120,14 @@ func main() {
 				time.Sleep(time.Duration(len) * time.Second)
 			}
 
-			if r.URL.Query().Get("crash") != "" {
+			if _, ok := r.URL.Query()["crash"]; ok {
 				fmt.Printf("Crashing...\n")
 				os.Exit(1)
 			}
 
 			if _, ok := r.URL.Query()["headers"]; ok {
 				fmt.Fprintf(w, "\nHeaders:\n")
+				fmt.Fprintf(w, "%s %s %s\n", r.Method, r.URL, r.Proto)
 				for _, k := range headers {
 					fmt.Fprintf(w, "%s: %v\n", k, r.Header[k])
 				}
@@ -126,15 +136,6 @@ func main() {
 			if _, ok := r.URL.Query()["envs"]; ok {
 				fmt.Fprintf(w, "\nEnvs:\n%s\n", env)
 			}
-
-			ec := exitCode
-			if t := r.URL.Query().Get("exit"); t != "" {
-				if s, err := strconv.Atoi(t); err == nil {
-					ec = s
-				}
-			}
-			w.WriteHeader(ec)
-			fmt.Printf("Exit(%d)\n", ec)
 
 			if len(body) == 0 {
 				fmt.Fprintf(w, "%s (host: %s%s)\n", msg, hostname, rev)
