@@ -49,6 +49,7 @@ func main() {
 	// Just so we can better control when we use the stream
 	cronCount := int64(0)
 	echoCount := int64(0)
+	activeRequests := int64(0)
 
 	hostname := os.Getenv("HOSTNAME")
 	msg := os.Getenv("MSG")
@@ -67,6 +68,9 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var body []byte
+
+		requests := atomic.AddInt64(&activeRequests, int64(1))
+		defer atomic.AddInt64(&activeRequests, int64(-1))
 
 		if r.Body != nil {
 			body, _ = ioutil.ReadAll(r.Body)
@@ -138,7 +142,8 @@ func main() {
 			}
 
 			if len(body) == 0 {
-				fmt.Fprintf(w, "%s (host: %s%s)\n", msg, hostname, rev)
+				fmt.Fprintf(w, "%s (host: %s%s active:%d)\n",
+					msg, hostname, rev, requests)
 			} else {
 				fmt.Fprintf(w, string(body)+"\n")
 			}
